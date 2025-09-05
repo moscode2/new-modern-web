@@ -4,28 +4,33 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '../../lib/supabase';
-import { Article, Category } from '../../types';
-import { ArrowLeft, Save, Eye } from 'lucide-react';
+import { Category } from '../../types'; // removed unused Article import
+import { ArrowLeft, Save } from 'lucide-react'; // removed unused Eye
 import toast, { Toaster } from 'react-hot-toast';
 
+// ✅ Fixed schema: category_id now allows 0/null but requires >0 before submit
 const articleSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   excerpt: z.string().optional(),
   content: z.string().min(1, 'Content is required'),
-  featured_image_url: z.string().url().optional().or(z.literal('')),
+  featured_image_url: z
+    .string()
+    .url('Must be a valid URL')
+    .optional()
+    .or(z.literal('')), // allow empty string
   category_id: z.number().min(1, 'Category is required'),
   author: z.string().optional(),
-  is_featured: z.boolean(),
+  is_featured: z.boolean().default(false),
   status: z.enum(['draft', 'published']),
 });
 
 type ArticleFormData = z.infer<typeof articleSchema>;
 
 export default function ArticleForm() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>(); // ✅ typed param
   const navigate = useNavigate();
   const isEditing = Boolean(id);
-  
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(isEditing);
@@ -35,7 +40,6 @@ export default function ArticleForm() {
     handleSubmit,
     formState: { errors },
     reset,
-    watch
   } = useForm<ArticleFormData>({
     resolver: zodResolver(articleSchema),
     defaultValues: {
@@ -43,11 +47,11 @@ export default function ArticleForm() {
       excerpt: '',
       content: '',
       featured_image_url: '',
-      category_id: 0,
+      category_id: 0, // placeholder until category is selected
       author: '',
       is_featured: false,
       status: 'draft',
-    }
+    },
   });
 
   useEffect(() => {
@@ -55,6 +59,7 @@ export default function ArticleForm() {
     if (isEditing) {
       fetchArticle();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchCategories = async () => {
@@ -62,19 +67,29 @@ export default function ArticleForm() {
       .from('categories')
       .select('*')
       .order('name');
-    
+
+    if (error) {
+      toast.error('Failed to load categories');
+      return;
+    }
     if (data) setCategories(data);
   };
 
   const fetchArticle = async () => {
     if (!id) return;
-    
+
     const { data, error } = await supabase
       .from('articles')
       .select('*')
       .eq('id', id)
       .single();
-    
+
+    if (error) {
+      toast.error('Article not found');
+      navigate('/admin/dashboard');
+      return;
+    }
+
     if (data) {
       reset({
         title: data.title,
@@ -86,11 +101,8 @@ export default function ArticleForm() {
         is_featured: data.is_featured,
         status: data.status,
       });
-    } else if (error) {
-      toast.error('Article not found');
-      navigate('/admin/dashboard');
     }
-    
+
     setInitialLoading(false);
   };
 
@@ -103,7 +115,7 @@ export default function ArticleForm() {
 
   const onSubmit = async (data: ArticleFormData) => {
     setLoading(true);
-    
+
     try {
       const slug = generateSlug(data.title);
       const articleData = {
@@ -113,7 +125,8 @@ export default function ArticleForm() {
         excerpt: data.excerpt || null,
         author: data.author || null,
         category_id: data.category_id || null,
-        published_at: data.status === 'published' ? new Date().toISOString() : null,
+        published_at:
+          data.status === 'published' ? new Date().toISOString() : null,
       };
 
       if (isEditing) {
@@ -121,20 +134,19 @@ export default function ArticleForm() {
           .from('articles')
           .update(articleData)
           .eq('id', id);
-        
+
         if (error) throw error;
         toast.success('Article updated successfully');
       } else {
-        const { error } = await supabase
-          .from('articles')
-          .insert([articleData]);
-        
+        const { error } = await supabase.from('articles').insert([articleData]);
+
         if (error) throw error;
         toast.success('Article created successfully');
       }
-      
+
       navigate('/admin/dashboard');
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       toast.error('Failed to save article');
     } finally {
       setLoading(false);
@@ -152,7 +164,7 @@ export default function ArticleForm() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Toaster position="top-right" />
-      
+
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -172,10 +184,12 @@ export default function ArticleForm() {
         </div>
       </header>
 
+      {/* Form */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Title */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Title *
@@ -186,10 +200,13 @@ export default function ArticleForm() {
                   placeholder="Enter article title"
                 />
                 {errors.title && (
-                  <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.title.message}
+                  </p>
                 )}
               </div>
 
+              {/* Category */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Category *
@@ -206,10 +223,13 @@ export default function ArticleForm() {
                   ))}
                 </select>
                 {errors.category_id && (
-                  <p className="mt-1 text-sm text-red-600">{errors.category_id.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.category_id.message}
+                  </p>
                 )}
               </div>
 
+              {/* Author */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Author
@@ -221,6 +241,7 @@ export default function ArticleForm() {
                 />
               </div>
 
+              {/* Featured Image */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Featured Image URL
@@ -231,10 +252,13 @@ export default function ArticleForm() {
                   placeholder="https://example.com/image.jpg"
                 />
                 {errors.featured_image_url && (
-                  <p className="mt-1 text-sm text-red-600">{errors.featured_image_url.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.featured_image_url.message}
+                  </p>
                 )}
               </div>
 
+              {/* Excerpt */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Excerpt
@@ -247,6 +271,7 @@ export default function ArticleForm() {
                 />
               </div>
 
+              {/* Content */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Content *
@@ -258,10 +283,13 @@ export default function ArticleForm() {
                   placeholder="Write your article content here..."
                 />
                 {errors.content && (
-                  <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.content.message}
+                  </p>
                 )}
               </div>
 
+              {/* Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Status
@@ -275,6 +303,7 @@ export default function ArticleForm() {
                 </select>
               </div>
 
+              {/* Featured Checkbox */}
               <div className="flex items-center">
                 <input
                   {...register('is_featured')}
@@ -288,6 +317,7 @@ export default function ArticleForm() {
             </div>
           </div>
 
+          {/* Buttons */}
           <div className="flex justify-end space-x-4">
             <button
               type="button"
@@ -302,7 +332,11 @@ export default function ArticleForm() {
               className="inline-flex items-center px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
             >
               <Save className="h-4 w-4 mr-2" />
-              {loading ? 'Saving...' : (isEditing ? 'Update Article' : 'Create Article')}
+              {loading
+                ? 'Saving...'
+                : isEditing
+                ? 'Update Article'
+                : 'Create Article'}
             </button>
           </div>
         </form>
