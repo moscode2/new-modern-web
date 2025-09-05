@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ArticleCard from "../components/ArticleCard";
-import { useStaticData } from "../hooks/useStaticData";
+import { useStaticData } from "../Hooks/useStaticData";
 
 export default function CategoryPage() {
   const { slug } = useParams<{ slug: string }>();
