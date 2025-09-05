@@ -1,10 +1,8 @@
-
 import { useParams } from "react-router-dom";
 import { Clock, Share2 } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { useStaticData } from "../hooks/useStaticData";
-
+import { useStaticData } from "../Hooks/useStaticData"; // fixed casing
 
 export default function ArticlePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -14,17 +12,17 @@ export default function ArticlePage() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
   const handleShare = async () => {
     const shareData = {
-      title: article?.title || 'AfriEuropa Article',
-      text: article?.excerpt || 'Check out this article from AfriEuropa.',
+      title: article?.title || "AfriEuropa Article",
+      text: article?.excerpt || "Check out this article from AfriEuropa.",
       url: window.location.href,
     };
 
@@ -33,11 +31,11 @@ export default function ArticlePage() {
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(window.location.href);
-        alert('Article link copied to clipboard!');
+        alert("Article link copied to clipboard!");
       }
-    } catch (error) {
+    } catch {
       // Fallback for older browsers
-      prompt('Copy this link to share:', window.location.href);
+      prompt("Copy this link to share:", window.location.href);
     }
   };
 
@@ -58,8 +56,12 @@ export default function ArticlePage() {
         <Header />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Article Not Found</h1>
-            <p className="text-gray-600">The article you're looking for doesn't exist.</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              Article Not Found
+            </h1>
+            <p className="text-gray-600">
+              The article you're looking for doesn't exist.
+            </p>
           </div>
         </div>
         <Footer />
@@ -70,14 +72,14 @@ export default function ArticlePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Article Header */}
         <header className="mb-8">
           <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
             {article.title}
           </h1>
-          
+
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4 text-gray-600">
               {article.author && (
@@ -90,7 +92,7 @@ export default function ArticlePage() {
                 </div>
               )}
             </div>
-            
+
             <button
               onClick={handleShare}
               className="inline-flex items-center space-x-2 text-gray-600 hover:text-orange-600 transition-colors"
@@ -120,9 +122,11 @@ export default function ArticlePage() {
 
         {/* Article Content */}
         <div className="prose prose-lg max-w-none">
-          <div 
+          <div
             className="text-gray-800 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<br />') }}
+            dangerouslySetInnerHTML={{
+              __html: article.content.replace(/\n/g, "<br />"),
+            }}
           />
         </div>
       </article>
